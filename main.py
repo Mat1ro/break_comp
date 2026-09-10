@@ -8,6 +8,17 @@ import time
 INTERVAL_SECONDS = 180
 
 
+def hide_dock_icon():
+    """Запускаем текущий процесс как фоновое приложение macOS без значка Dock."""
+    if sys.platform != "darwin":
+        return True
+    from AppKit import NSApplication, NSApplicationActivationPolicyProhibited
+
+    return bool(NSApplication.sharedApplication().setActivationPolicy_(
+        NSApplicationActivationPolicyProhibited
+    ))
+
+
 def move_cursor(pyautogui, x, y):
     """На macOS меняем позицию напрямую, без синтетических событий мыши."""
     if sys.platform == "darwin":
@@ -24,6 +35,9 @@ def move_cursor(pyautogui, x, y):
 def main() -> int:
     try:
         import pyautogui
+        # Импорт GUI-зависимостей может зарегистрировать Python в Dock.
+        if not hide_dock_icon():
+            print("macOS не удалось скрыть значок Python в Dock.", file=sys.stderr)
     except ImportError:
         print(
             "Установите зависимости: python3 -m pip install -r requirements.txt",

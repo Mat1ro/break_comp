@@ -59,7 +59,11 @@ def main():
             python = PROJECT / ".venv/bin/python"
             if not python.is_file() or not (PROJECT / "main.py").is_file():
                 raise RuntimeError("Сначала создайте .venv и установите зависимости по README.md.")
-            subprocess.run([str(python), "-c", "import pyautogui"], check=True)
+            subprocess.run(
+                [str(python), "-c", "import pyautogui; from main import hide_dock_icon; hide_dock_icon()"],
+                cwd=PROJECT,
+                check=True,
+            )
             payload = plistlib.dumps(configuration())
             PLIST.parent.mkdir(parents=True, exist_ok=True)
             LOGS.mkdir(parents=True, exist_ok=True)

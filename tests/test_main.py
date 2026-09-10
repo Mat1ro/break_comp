@@ -8,6 +8,12 @@ import main
 
 
 class CursorTests(unittest.TestCase):
+    def setUp(self):
+        # Проверки логики курсора не должны менять GUI тестового процесса.
+        background = patch.object(main, "hide_dock_icon", return_value=True)
+        background.start()
+        self.addCleanup(background.stop)
+
     def test_unavailable_screen_recovers_without_exiting(self):
         clock = [0.0]
         moments = []
