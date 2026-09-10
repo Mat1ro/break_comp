@@ -16,6 +16,10 @@ class CursorTests(unittest.TestCase):
         audio = patch.object(main, "RepeatingAudio")
         self.audio = audio.start().return_value
         self.addCleanup(audio.stop)
+        click = patch.object(main, "double_click", side_effect=lambda gui, x, y:
+                             gui.click(x=x, y=y, clicks=2, interval=0, button="left"))
+        click.start()
+        self.addCleanup(click.stop)
 
     def test_unavailable_screen_recovers_without_exiting(self):
         clock = [0.0]
@@ -95,7 +99,7 @@ class CursorTests(unittest.TestCase):
                 self.assertIn("подтверждено", output.getvalue())
                 self.assertIn("Остановлено.", output.getvalue())
 
-    def test_one_left_click_after_each_successful_move_only(self):
+    def test_double_left_click_after_each_successful_move_only(self):
         events = []
         gui = types.SimpleNamespace(
             size=lambda: (1728, 1117),
@@ -115,9 +119,9 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(events, [
             ("move", 100, 200),
             ("move", 300, 400),
-            ("click", {"x": 300, "y": 400, "clicks": 1, "button": "left"}),
+            ("click", {"x": 300, "y": 400, "clicks": 2, "interval": 0, "button": "left"}),
             ("move", 500, 600),
-            ("click", {"x": 500, "y": 600, "clicks": 1, "button": "left"}),
+            ("click", {"x": 500, "y": 600, "clicks": 2, "interval": 0, "button": "left"}),
         ])
 
     def test_other_platforms_keep_pyautogui(self):
@@ -125,6 +129,37 @@ class CursorTests(unittest.TestCase):
         with patch.object(main.sys, "platform", "win32"):
             self.assertTrue(main.move_cursor(gui, 100, 200))
         gui.moveTo.assert_called_once_with(100, 200, duration=0)
+
+
+class DoubleClickTests(unittest.TestCase):
+    def test_macos_sends_two_down_up_pairs_with_click_counts(self):
+        created = []
+        posted = []
+
+        def create(source, event_type, point, button):
+            event = {"type": event_type, "point": point, "button": button}
+            created.append(event)
+            return event
+
+        quartz = types.SimpleNamespace(
+            kCGEventLeftMouseDown="down", kCGEventLeftMouseUp="up",
+            kCGMouseButtonLeft="left", kCGMouseEventClickState="count", kCGHIDEventTap="tap",
+            CGEventCreateMouseEvent=create,
+            CGEventSetIntegerValueField=lambda event, key, value: event.update({key: value}),
+            CGEventPost=lambda tap, event: posted.append((tap, event.copy())),
+        )
+        with patch.object(main.sys, "platform", "darwin"), patch.dict("sys.modules", Quartz=quartz):
+            main.double_click(Mock(), 100, 200)
+        self.assertEqual([(event["type"], event["count"]) for _, event in posted],
+                         [("down", 1), ("up", 1), ("down", 2), ("up", 2)])
+        self.assertTrue(all(tap == "tap" and event["point"] == (100, 200)
+                            and event["button"] == "left" for tap, event in posted))
+
+    def test_other_platforms_click_twice_without_delay(self):
+        gui = Mock()
+        with patch.object(main.sys, "platform", "win32"):
+            main.double_click(gui, 100, 200)
+        gui.click.assert_called_once_with(x=100, y=200, clicks=2, interval=0, button="left")
 
 
 if __name__ == "__main__":

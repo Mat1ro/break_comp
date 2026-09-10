@@ -7,7 +7,7 @@ import time
 
 from audio_player import RepeatingAudio
 
-INTERVAL_SECONDS = 0.5
+INTERVAL_SECONDS = 0.1
 
 
 def hide_dock_icon():
@@ -34,6 +34,26 @@ def move_cursor(pyautogui, x, y):
     return tuple(pyautogui.position()) == (x, y)
 
 
+def double_click(pyautogui, x, y):
+    if sys.platform != "darwin":
+        pyautogui.click(x=x, y=y, clicks=2, interval=0, button="left")
+        return
+
+    import Quartz
+
+    # macOS получает явный счётчик кликов, чтобы распознать именно двойной клик.
+    events = []
+    for click_count in (1, 2):
+        for event_type in (Quartz.kCGEventLeftMouseDown, Quartz.kCGEventLeftMouseUp):
+            event = Quartz.CGEventCreateMouseEvent(None, event_type, (x, y), Quartz.kCGMouseButtonLeft)
+            if event is None:
+                raise RuntimeError("Не удалось создать событие двойного клика.")
+            Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventClickState, click_count)
+            events.append(event)
+    for event in events:
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
+
+
 def main() -> int:
     try:
         import pyautogui
@@ -49,7 +69,7 @@ def main() -> int:
 
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
-    print(f"Каждые {INTERVAL_SECONDS} секунд: телепортация курсора и один левый клик. Остановка: Ctrl+C.")
+    print(f"Каждые {INTERVAL_SECONDS} секунд: телепортация курсора и двойной левый клик. Остановка: Ctrl+C.")
 
     audio = RepeatingAudio()
     try:
@@ -71,11 +91,11 @@ def main() -> int:
             y = random.randrange(1, height - 1)
             status = "confirmed" if move_cursor(pyautogui, x, y) else "unconfirmed"
             if status == "confirmed":
-                pyautogui.click(x=x, y=y, clicks=1, button="left")
+                double_click(pyautogui, x, y)
             if status != last_status:
                 if status == "confirmed":
                     print("Перемещение курсора подтверждено по фактической позиции; "
-                          "отправлена команда левого клика.", flush=True)
+                          "отправлена команда двойного левого клика.", flush=True)
                 else:
                     print(f"Позиция курсора не совпала с заданной. Повторю через {INTERVAL_SECONDS} секунд; "
                           "если проблема сохраняется, проверьте разрешения macOS.", flush=True)
