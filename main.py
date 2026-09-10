@@ -7,41 +7,10 @@ import time
 
 from audio_player import RepeatingAudio
 from brightness_controller import BrightnessCycle
+from stop_hotkey import HotkeyError, StopHotkey
 
 INTERVAL_SECONDS = 0.1
 STARTUP_DELAY_SECONDS = 60
-HOTKEY_POLL_SECONDS = 0.02
-
-
-def stop_requested():
-    """Ctrl + Option + физическая клавиша Q (Й в русской раскладке)."""
-    if sys.platform != "darwin":
-        return False
-    import Quartz
-
-    state = Quartz.kCGEventSourceStateCombinedSessionState
-
-    def pressed(keycode):
-        return Quartz.CGEventSourceKeyState(state, keycode)
-
-    # Виртуальные коды macOS: Q, левый/правый Control, левый/правый Option.
-    return (pressed(12) and (pressed(59) or pressed(62))
-            and (pressed(58) or pressed(61)))
-
-
-def wait_or_stop(seconds):
-    """Ожидание с проверкой сочетания, включая минуту перед запуском."""
-    if sys.platform != "darwin":
-        time.sleep(seconds)
-        return
-    deadline = time.monotonic() + seconds
-    while True:
-        if stop_requested():
-            raise KeyboardInterrupt
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return
-        time.sleep(min(remaining, HOTKEY_POLL_SECONDS))
 
 
 def hide_dock_icon():
@@ -86,14 +55,16 @@ def main() -> int:
 
     audio = RepeatingAudio(initial_delay=0)
     brightness = BrightnessCycle()
+    hotkey = StopHotkey()
     try:
-        wait_or_stop(STARTUP_DELAY_SECONDS)
+        hotkey.start()
+        hotkey.wait(STARTUP_DELAY_SECONDS)
         audio.start()
         brightness.start()
         next_move = time.monotonic()
         last_status = None
         while True:
-            wait_or_stop(max(0, next_move - time.monotonic()))
+            hotkey.wait(max(0, next_move - time.monotonic()))
             brightness.update()
             width, height = pyautogui.size()
             if width < 3 or height < 3:
@@ -117,11 +88,17 @@ def main() -> int:
                 next_move = time.monotonic() + INTERVAL_SECONDS
     except KeyboardInterrupt:
         pass
+    except HotkeyError as error:
+        print(f"{error} Программа остановлена.", file=sys.stderr)
+        return 1
     finally:
         try:
             brightness.close()
         finally:
-            audio.close()
+            try:
+                audio.close()
+            finally:
+                hotkey.close()
     return 0
 
 
