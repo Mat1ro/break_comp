@@ -37,7 +37,7 @@ class CursorTests(unittest.TestCase):
                 patch.object(main, "move_cursor", move), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main.main(), 0)
-        self.assertEqual(moments, [15.0, 20.0])
+        self.assertEqual(moments, [540.0, 720.0])
         self.assertIn("подтверждено", output.getvalue())
 
     def test_macos_warp_checks_actual_position_and_return_code(self):

@@ -1,11 +1,11 @@
-"""Перемещает курсор в случайную точку основного экрана каждые 5 секунд."""
+"""Перемещает курсор в случайную точку основного экрана каждые 180 секунд."""
 
 import random
 import sys
 import time
 
 
-INTERVAL_SECONDS = 5
+INTERVAL_SECONDS = 180
 
 
 def move_cursor(pyautogui, x, y):
@@ -34,7 +34,7 @@ def main() -> int:
 
     pyautogui.FAILSAFE = True
     pyautogui.PAUSE = 0
-    print("Курсор будет перемещаться каждые 5 секунд. Остановка: Ctrl+C.")
+    print(f"Курсор будет перемещаться каждые {INTERVAL_SECONDS} секунд. Остановка: Ctrl+C.")
     print("Аварийная остановка: переместите курсор в левый верхний угол и оставьте там.")
 
     try:
@@ -58,7 +58,7 @@ def main() -> int:
                 if status == "confirmed":
                     print("Перемещение курсора подтверждено по фактической позиции.", flush=True)
                 else:
-                    print("Позиция курсора не совпала с заданной. Повторю через 5 секунд; "
+                    print(f"Позиция курсора не совпала с заданной. Повторю через {INTERVAL_SECONDS} секунд; "
                           "если проблема сохраняется, проверьте разрешения macOS.", flush=True)
             last_status = status
             next_move += INTERVAL_SECONDS
