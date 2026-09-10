@@ -67,6 +67,7 @@ echo "Включаю автозапуск…"
 "$version_dir/.venv/bin/python" "$version_dir/autostart.py" install
 ln -sfn "$version_dir" "$install_root/current"
 echo "Готово. Программа запущена и добавлена в автозапуск."
+echo "Курсор и звук включатся через 2 минуты. Клики отключены."
 echo "Остановить:"
 printf '  %q %q stop\n' "$install_root/current/.venv/bin/python" "$install_root/current/autostart.py"
 echo "Остановить и отключить автозапуск:"

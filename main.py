@@ -1,4 +1,4 @@
-"""Телепортация курсора с кликом и независимое воспроизведение звука на macOS."""
+"""Телепортация курсора и звук после двухминутной задержки при запуске."""
 
 import random
 import signal
@@ -8,6 +8,7 @@ import time
 from audio_player import RepeatingAudio
 
 INTERVAL_SECONDS = 0.1
+STARTUP_DELAY_SECONDS = 120
 
 
 def hide_dock_icon():
@@ -34,36 +35,6 @@ def move_cursor(pyautogui, x, y):
     return tuple(pyautogui.position()) == (x, y)
 
 
-def click_permission(request=False):
-    if sys.platform != "darwin":
-        return True
-    import Quartz
-
-    if request:
-        Quartz.CGRequestPostEventAccess()
-    return bool(Quartz.CGPreflightPostEventAccess())
-
-
-def double_click(pyautogui, x, y):
-    if sys.platform != "darwin":
-        pyautogui.click(x=x, y=y, clicks=2, interval=0, button="left")
-        return
-
-    import Quartz
-
-    # macOS получает явный счётчик кликов, чтобы распознать именно двойной клик.
-    events = []
-    for click_count in (1, 2):
-        for event_type in (Quartz.kCGEventLeftMouseDown, Quartz.kCGEventLeftMouseUp):
-            event = Quartz.CGEventCreateMouseEvent(None, event_type, (x, y), Quartz.kCGMouseButtonLeft)
-            if event is None:
-                raise RuntimeError("Не удалось создать событие двойного клика.")
-            Quartz.CGEventSetIntegerValueField(event, Quartz.kCGMouseEventClickState, click_count)
-            events.append(event)
-    for event in events:
-        Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
-
-
 def main() -> int:
     try:
         import pyautogui
@@ -79,26 +50,17 @@ def main() -> int:
 
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
-    print(f"Каждые {INTERVAL_SECONDS} секунд: телепортация курсора и двойной левый клик. Остановка: Ctrl+C.")
+    print(f"Курсор и звук начнут работать через {STARTUP_DELAY_SECONDS} секунд. Остановка: Ctrl+C.", flush=True)
 
-    audio = RepeatingAudio()
+    audio = RepeatingAudio(initial_delay=0)
     try:
+        time.sleep(STARTUP_DELAY_SECONDS)
         audio.start()
-        next_move = time.monotonic() + INTERVAL_SECONDS
+        print(f"Телепортация курсора каждые {INTERVAL_SECONDS} секунд, без кликов.", flush=True)
+        next_move = time.monotonic()
         last_status = None
         while True:
             time.sleep(max(0, next_move - time.monotonic()))
-            if not click_permission():
-                if last_status != "permission_missing":
-                    print("macOS запрещает отправку кликов. Разрешите Python в настройках → "
-                          "Конфиденциальность и безопасность → Универсальный доступ.\n"
-                          f"Исполняемый файл: {sys.executable}\n"
-                          "Курсор приостановлен до выдачи разрешения.", file=sys.stderr, flush=True)
-                    click_permission(request=True)
-                last_status = "permission_missing"
-                time.sleep(1)
-                next_move = time.monotonic() + INTERVAL_SECONDS
-                continue
             width, height = pyautogui.size()
             if width < 3 or height < 3:
                 # Дисплей может быть временно недоступен во время сна/пробуждения.
@@ -111,12 +73,9 @@ def main() -> int:
             x = random.randrange(1, width - 1)
             y = random.randrange(1, height - 1)
             status = "confirmed" if move_cursor(pyautogui, x, y) else "unconfirmed"
-            if status == "confirmed":
-                double_click(pyautogui, x, y)
             if status != last_status:
                 if status == "confirmed":
-                    print("Перемещение курсора подтверждено по фактической позиции; "
-                          "отправлена команда двойного левого клика.", flush=True)
+                    print("Перемещение курсора подтверждено по фактической позиции.", flush=True)
                 else:
                     print(f"Позиция курсора не совпала с заданной. Повторю через {INTERVAL_SECONDS} секунд; "
                           "если проблема сохраняется, проверьте разрешения macOS.", flush=True)

@@ -12,7 +12,8 @@ AUDIO_FILE = Path(__file__).resolve().parent / "assets" / "farts-8.mp3"
 
 
 class RepeatingAudio:
-    def __init__(self):
+    def __init__(self, initial_delay=AUDIO_INTERVAL_SECONDS):
+        self.initial_delay = initial_delay
         self.stop_event = threading.Event()
         self.thread = None
         self.player = None
@@ -53,7 +54,7 @@ class RepeatingAudio:
             )
 
     def _run(self):
-        next_play = time.monotonic() + AUDIO_INTERVAL_SECONDS
+        next_play = time.monotonic() + self.initial_delay
         try:
             while not self.stop_event.wait(max(0, next_play - time.monotonic())):
                 try:

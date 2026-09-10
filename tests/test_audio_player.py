@@ -6,6 +6,23 @@ import audio_player
 
 
 class AudioTests(unittest.TestCase):
+    def test_immediate_play_after_shared_startup_delay(self):
+        clock = [120.0]
+        moments = []
+        audio = audio_player.RepeatingAudio(initial_delay=0)
+
+        def wait(delay):
+            self.assertGreaterEqual(delay, 0)
+            clock[0] += delay
+            return len(moments) >= 3
+
+        audio.stop_event = Mock()
+        audio.stop_event.wait.side_effect = wait
+        with patch.object(audio_player.time, "monotonic", lambda: clock[0]), \
+                patch.object(audio, "play_once", side_effect=lambda: moments.append(clock[0])):
+            audio._run()
+        self.assertEqual(moments, [120.0, 130.0, 140.0])
+
     def test_first_play_at_ten_seconds_and_independent_period(self):
         clock = [0.0]
         moments = []
