@@ -9,6 +9,38 @@ from audio_player import RepeatingAudio
 
 INTERVAL_SECONDS = 0.1
 STARTUP_DELAY_SECONDS = 60
+HOTKEY_POLL_SECONDS = 0.02
+
+
+def stop_requested():
+    """Ctrl + Option + физическая клавиша Q (Й в русской раскладке)."""
+    if sys.platform != "darwin":
+        return False
+    import Quartz
+
+    state = Quartz.kCGEventSourceStateCombinedSessionState
+
+    def pressed(keycode):
+        return Quartz.CGEventSourceKeyState(state, keycode)
+
+    # Виртуальные коды macOS: Q, левый/правый Control, левый/правый Option.
+    return (pressed(12) and (pressed(59) or pressed(62))
+            and (pressed(58) or pressed(61)))
+
+
+def wait_or_stop(seconds):
+    """Ожидание с проверкой сочетания, включая минуту перед запуском."""
+    if sys.platform != "darwin":
+        time.sleep(seconds)
+        return
+    deadline = time.monotonic() + seconds
+    while True:
+        if stop_requested():
+            raise KeyboardInterrupt
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+        time.sleep(min(remaining, HOTKEY_POLL_SECONDS))
 
 
 def hide_dock_icon():
@@ -53,12 +85,12 @@ def main() -> int:
 
     audio = RepeatingAudio(initial_delay=0)
     try:
-        time.sleep(STARTUP_DELAY_SECONDS)
+        wait_or_stop(STARTUP_DELAY_SECONDS)
         audio.start()
         next_move = time.monotonic()
         last_status = None
         while True:
-            time.sleep(max(0, next_move - time.monotonic()))
+            wait_or_stop(max(0, next_move - time.monotonic()))
             width, height = pyautogui.size()
             if width < 3 or height < 3:
                 # Дисплей может быть временно недоступен во время сна/пробуждения.

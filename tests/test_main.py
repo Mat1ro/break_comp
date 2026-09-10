@@ -40,7 +40,7 @@ class CursorTests(unittest.TestCase):
 
         with patch.dict('sys.modules', pyautogui=gui), \
                 patch.object(main.time, 'monotonic', lambda: clock[0]), \
-                patch.object(main.time, 'sleep', sleep), \
+                patch.object(main, 'wait_or_stop', sleep), \
                 patch.object(main, 'move_cursor', move), \
                 contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main.main(), 0)
@@ -65,7 +65,7 @@ class CursorTests(unittest.TestCase):
     def test_cancel_during_startup_delay_prevents_all_activity(self):
         gui = types.SimpleNamespace(size=Mock(), click=Mock())
         with patch.dict('sys.modules', pyautogui=gui), \
-                patch.object(main.time, 'sleep', side_effect=KeyboardInterrupt), \
+                patch.object(main, 'wait_or_stop', side_effect=KeyboardInterrupt), \
                 patch.object(main, 'move_cursor') as move, \
                 contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main.main(), 0)
@@ -110,7 +110,7 @@ class CursorTests(unittest.TestCase):
                 quartz = types.SimpleNamespace(kCGErrorSuccess=0, CGWarpMouseCursorPosition=Mock(side_effect=warp))
                 with patch.object(main.sys, 'platform', platform), \
                         patch.dict('sys.modules', pyautogui=gui, Quartz=quartz), \
-                        patch.object(main.time, 'sleep', side_effect=[None, None, KeyboardInterrupt]), \
+                        patch.object(main, 'wait_or_stop', side_effect=[None, None, KeyboardInterrupt]), \
                         contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(main.main(), 0)
                 self.assertFalse(gui.FAILSAFE)
