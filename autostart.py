@@ -85,9 +85,12 @@ def main():
                 print("Агент не загружен в текущем сеансе.")
             else:
                 # Полный вывод launchctl может содержать переменные окружения.
+                seen = set()
                 for line in result.stdout.splitlines():
-                    if line.strip().startswith(("state =", "pid =", "last exit code =")):
-                        print(line.strip())
+                    key, separator, value = line.strip().partition(" = ")
+                    if separator and key in {"state", "pid", "last exit code"} and key not in seen:
+                        print(f"{key} = {value}")
+                        seen.add(key)
         return 0
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         print(f"Ошибка: {error}", file=sys.stderr)

@@ -8,6 +8,20 @@ import time
 INTERVAL_SECONDS = 5
 
 
+def move_cursor(pyautogui, x, y):
+    """На macOS меняем позицию напрямую, без синтетических событий мыши."""
+    if sys.platform == "darwin":
+        import Quartz
+
+        pyautogui.failSafeCheck()
+        result = Quartz.CGWarpMouseCursorPosition((x, y))
+        if result != Quartz.kCGErrorSuccess:
+            return False
+    else:
+        pyautogui.moveTo(x, y, duration=0)
+    return tuple(pyautogui.position()) == (x, y)
+
+
 def main() -> int:
     try:
         import pyautogui
@@ -25,16 +39,28 @@ def main() -> int:
 
     try:
         next_move = time.monotonic() + INTERVAL_SECONDS
+        last_status = None
         while True:
             time.sleep(max(0, next_move - time.monotonic()))
             width, height = pyautogui.size()
             if width < 3 or height < 3:
-                print("Не удалось определить размеры экрана.", file=sys.stderr)
-                return 1
+                # Дисплей может быть временно недоступен во время сна/пробуждения.
+                if last_status != "screen_unavailable":
+                    print("Экран недоступен; ожидаю восстановления рабочего стола.", flush=True)
+                last_status = "screen_unavailable"
+                next_move = time.monotonic() + INTERVAL_SECONDS
+                continue
             # Не попадаем в углы, чтобы самим не включить аварийную остановку.
             x = random.randrange(1, width - 1)
             y = random.randrange(1, height - 1)
-            pyautogui.moveTo(x, y, duration=0)
+            status = "confirmed" if move_cursor(pyautogui, x, y) else "unconfirmed"
+            if status != last_status:
+                if status == "confirmed":
+                    print("Перемещение курсора подтверждено по фактической позиции.", flush=True)
+                else:
+                    print("Позиция курсора не совпала с заданной. Повторю через 5 секунд; "
+                          "если проблема сохраняется, проверьте разрешения macOS.", flush=True)
+            last_status = status
             next_move += INTERVAL_SECONDS
             # После сна компьютера не выполняем пропущенные перемещения подряд.
             if next_move <= time.monotonic():
