@@ -19,6 +19,7 @@ class CursorTests(unittest.TestCase):
         moments = []
         gui = types.SimpleNamespace(
             size=Mock(side_effect=[(0, 0), (0, 0), (1728, 1117), (1728, 1117)]),
+            click=Mock(),
         )
 
         def sleep(seconds):
@@ -39,6 +40,7 @@ class CursorTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main.main(), 0)
         self.assertEqual(moments, [540.0, 720.0])
+        self.assertEqual(gui.click.call_count, 1)
         self.assertIn("подтверждено", output.getvalue())
 
     def test_macos_warp_checks_actual_position_and_return_code(self):
@@ -59,6 +61,7 @@ class CursorTests(unittest.TestCase):
                 position = [1727, 0]
                 gui = types.SimpleNamespace(
                     FAILSAFE=True,
+                    click=Mock(),
                     size=lambda: (1728, 1117),
                     position=lambda: tuple(position),
                     failSafeCheck=Mock(side_effect=AssertionError("Corner stop called")),
@@ -86,6 +89,31 @@ class CursorTests(unittest.TestCase):
                 self.assertNotEqual(position, [1727, 0])
                 self.assertIn("подтверждено", output.getvalue())
                 self.assertIn("Остановлено.", output.getvalue())
+
+    def test_one_left_click_after_each_successful_move_only(self):
+        events = []
+        gui = types.SimpleNamespace(
+            size=lambda: (1728, 1117),
+            click=Mock(side_effect=lambda **kwargs: events.append(("click", kwargs))),
+        )
+
+        def move(gui, x, y):
+            events.append(("move", x, y))
+            return x != 100
+
+        with patch.dict("sys.modules", pyautogui=gui), \
+                patch.object(main, "move_cursor", side_effect=move), \
+                patch.object(main.random, "randrange", side_effect=[100, 200, 300, 400, 500, 600]), \
+                patch.object(main.time, "sleep", side_effect=[None, None, None, KeyboardInterrupt]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(main.main(), 0)
+        self.assertEqual(events, [
+            ("move", 100, 200),
+            ("move", 300, 400),
+            ("click", {"x": 300, "y": 400, "clicks": 1, "button": "left"}),
+            ("move", 500, 600),
+            ("click", {"x": 500, "y": 600, "clicks": 1, "button": "left"}),
+        ])
 
     def test_other_platforms_keep_pyautogui(self):
         gui = types.SimpleNamespace(moveTo=Mock(), position=lambda: (100, 200))

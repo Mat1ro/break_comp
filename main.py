@@ -1,4 +1,4 @@
-"""Перемещает курсор в случайную точку основного экрана каждые 180 секунд."""
+"""Каждые 180 секунд перемещает курсор в случайную точку и кликает левой кнопкой."""
 
 import random
 import sys
@@ -47,7 +47,7 @@ def main() -> int:
 
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
-    print(f"Курсор будет перемещаться каждые {INTERVAL_SECONDS} секунд. Остановка: Ctrl+C.")
+    print(f"Каждые {INTERVAL_SECONDS} секунд: телепортация курсора и один левый клик. Остановка: Ctrl+C.")
 
     try:
         next_move = time.monotonic() + INTERVAL_SECONDS
@@ -66,9 +66,12 @@ def main() -> int:
             x = random.randrange(1, width - 1)
             y = random.randrange(1, height - 1)
             status = "confirmed" if move_cursor(pyautogui, x, y) else "unconfirmed"
+            if status == "confirmed":
+                pyautogui.click(x=x, y=y, clicks=1, button="left")
             if status != last_status:
                 if status == "confirmed":
-                    print("Перемещение курсора подтверждено по фактической позиции.", flush=True)
+                    print("Перемещение курсора подтверждено по фактической позиции; "
+                          "отправлена команда левого клика.", flush=True)
                 else:
                     print(f"Позиция курсора не совпала с заданной. Повторю через {INTERVAL_SECONDS} секунд; "
                           "если проблема сохраняется, проверьте разрешения macOS.", flush=True)
