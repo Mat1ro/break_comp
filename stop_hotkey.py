@@ -95,7 +95,7 @@ class StopHotkey:
             self.carbon.ReleaseEvent(event)
 
     def wait(self, seconds):
-        if sys.platform != "darwin":
+        if sys.platform != "darwin" or not self.reference.value:
             time.sleep(seconds)
             return
         deadline = time.monotonic() + seconds
@@ -114,35 +114,3 @@ class StopHotkey:
             self.reference = ct.c_void_p()
             if result != 0:
                 print(f"Не удалось освободить горячую клавишу (код {result}).", file=sys.stderr)
-
-
-def check_hotkey():
-    """Проверка только клавиатуры: никаких эффектов или изменения автозапуска."""
-    if sys.platform != "darwin":
-        print("Проверка доступна только на macOS.", file=sys.stderr)
-        return 1
-    from main import hide_dock_icon
-
-    hide_dock_icon()
-    hotkey = StopHotkey()
-    try:
-        hotkey.start()
-        print("За 15 секунд нажмите Ctrl + Option + Q (Й). Эффекты выключены.", file=sys.stderr)
-        hotkey.wait(15)
-        print("Сочетание не получено.", file=sys.stderr)
-        return 1
-    except KeyboardInterrupt:
-        if hotkey.triggered:
-            print("Ctrl + Option + Q получено: остановка работает.", file=sys.stderr)
-            return 0
-        print("Проверка прервана через Ctrl+C.", file=sys.stderr)
-        return 1
-    except HotkeyError as error:
-        print(str(error), file=sys.stderr)
-        return 1
-    finally:
-        hotkey.close()
-
-
-if __name__ == "__main__":
-    raise SystemExit(check_hotkey())

@@ -90,8 +90,8 @@ class HotkeyTests(unittest.TestCase):
             sleep.assert_called_once_with(0.1)
         self.carbon.RegisterEventHotKey.assert_not_called()
 
-    def test_main_stops_before_effects_if_registration_fails(self):
-        gui = types.SimpleNamespace()
+    def test_main_continues_effects_if_registration_fails(self):
+        gui = types.SimpleNamespace(size=lambda: (1728, 1117))
         with patch.dict('sys.modules', pyautogui=gui), \
                 patch.object(main, 'hide_dock_icon', return_value=True), \
                 patch.object(main, 'StopHotkey') as hotkey_class, \
@@ -101,13 +101,26 @@ class HotkeyTests(unittest.TestCase):
                 contextlib.redirect_stderr(io.StringIO()) as stderr, \
                 contextlib.redirect_stdout(io.StringIO()) as stdout:
             hotkey_class.return_value.start.side_effect = keys.HotkeyError('conflict')
-            self.assertEqual(main.main(), 1)
-            audio.return_value.start.assert_not_called()
-            brightness.return_value.start.assert_not_called()
-            move.assert_not_called()
-            hotkey_class.return_value.close.assert_called_once()
-            self.assertIn('Программа остановлена', stderr.getvalue())
+            hotkey_class.return_value.wait.side_effect = [None, None, KeyboardInterrupt]
+            self.assertEqual(main.main(), 0)
+            audio.return_value.start.assert_called_once()
+            brightness.return_value.start.assert_called_once()
+            move.assert_called_once()
+            audio.return_value.close.assert_called_once()
+            brightness.return_value.close.assert_called_once()
+            self.assertIn('Продолжаю без горячей клавиши', stderr.getvalue())
             self.assertEqual(stdout.getvalue(), '')
+
+    def test_failed_registration_falls_back_to_normal_wait(self):
+        self.carbon.RegisterEventHotKey.side_effect = None
+        self.carbon.RegisterEventHotKey.return_value = -9878
+        with self.assertRaises(keys.HotkeyError):
+            self.hotkey.start()
+        self.hotkey.close()
+        with patch.object(keys.time, 'sleep') as sleep:
+            self.hotkey.wait(60)
+            sleep.assert_called_once_with(60)
+        self.carbon.ReceiveNextEvent.assert_not_called()
 
     def test_main_cleans_up_for_hotkey_during_delay_and_effects(self):
         for wait_results in ([KeyboardInterrupt], [None, None, KeyboardInterrupt]):

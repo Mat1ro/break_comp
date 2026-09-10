@@ -57,7 +57,12 @@ def main() -> int:
     brightness = BrightnessCycle()
     hotkey = StopHotkey()
     try:
-        hotkey.start()
+        try:
+            hotkey.start()
+        except HotkeyError as error:
+            hotkey.close()
+            print(f"{error} Продолжаю без горячей клавиши; остановка: autostart.py stop или Ctrl+C.",
+                  file=sys.stderr)
         hotkey.wait(STARTUP_DELAY_SECONDS)
         audio.start()
         brightness.start()
