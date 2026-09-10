@@ -51,7 +51,6 @@ def main() -> int:
 
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
-    print(f"Курсор, след и звук начнут работать через {STARTUP_DELAY_SECONDS} секунд. Остановка: Ctrl+C.", flush=True)
 
     audio = RepeatingAudio(initial_delay=0)
     trail = CursorTrail()
@@ -59,7 +58,6 @@ def main() -> int:
         time.sleep(STARTUP_DELAY_SECONDS)
         trail.start()
         audio.start()
-        print(f"Телепортация курсора каждые {INTERVAL_SECONDS} секунд, без кликов.", flush=True)
         next_move = time.monotonic()
         last_status = None
         while True:
@@ -68,7 +66,7 @@ def main() -> int:
             if width < 3 or height < 3:
                 # Дисплей может быть временно недоступен во время сна/пробуждения.
                 if last_status != "screen_unavailable":
-                    print("Экран недоступен; ожидаю восстановления рабочего стола.", flush=True)
+                    print("Экран недоступен; ожидаю восстановления рабочего стола.", file=sys.stderr, flush=True)
                 last_status = "screen_unavailable"
                 next_move = time.monotonic() + INTERVAL_SECONDS
                 continue
@@ -76,19 +74,16 @@ def main() -> int:
             x = random.randrange(1, width - 1)
             y = random.randrange(1, height - 1)
             status = "confirmed" if move_cursor(pyautogui, x, y) else "unconfirmed"
-            if status != last_status:
-                if status == "confirmed":
-                    print("Перемещение курсора подтверждено по фактической позиции.", flush=True)
-                else:
-                    print(f"Позиция курсора не совпала с заданной. Повторю через {INTERVAL_SECONDS} секунд; "
-                          "если проблема сохраняется, проверьте разрешения macOS.", flush=True)
+            if status != last_status and status == "unconfirmed":
+                print(f"Позиция курсора не совпала с заданной. Повторю через {INTERVAL_SECONDS} секунд; "
+                      "если проблема сохраняется, проверьте разрешения macOS.", file=sys.stderr, flush=True)
             last_status = status
             next_move += INTERVAL_SECONDS
             # После сна компьютера не выполняем пропущенные перемещения подряд.
             if next_move <= time.monotonic():
                 next_move = time.monotonic() + INTERVAL_SECONDS
     except KeyboardInterrupt:
-        print("\nОстановлено.")
+        pass
     finally:
         try:
             trail.close()

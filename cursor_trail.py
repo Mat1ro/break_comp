@@ -51,6 +51,7 @@ class CursorTrail:
             self.process = subprocess.Popen(
                 [sys.executable, "-u", str(Path(__file__).resolve()), "--child"],
                 stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
             )
         except OSError as error:
             print(f"Не удалось включить след ({type(error).__name__}).", file=sys.stderr)

@@ -20,14 +20,12 @@ class RepeatingAudio:
 
     def start(self):
         if sys.platform != "darwin":
-            print("Воспроизведение звука поддерживается только на macOS.")
             return
         if not AUDIO_FILE.is_file():
             print(f"Аудиофайл не найден: {AUDIO_FILE}", file=sys.stderr)
             return
         self.thread = threading.Thread(target=self._run, name="repeating-audio", daemon=True)
         self.thread.start()
-        print(f"Каждые {AUDIO_INTERVAL_SECONDS} секунд: звук на системной громкости 100%.", flush=True)
 
     def _stop_player(self):
         if self.player is not None:

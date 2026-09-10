@@ -48,8 +48,9 @@ class CursorTests(unittest.TestCase):
                 patch.object(main.time, 'monotonic', lambda: clock[0]), \
                 patch.object(main.time, 'sleep', sleep), \
                 patch.object(main, 'move_cursor', move), \
-                contextlib.redirect_stdout(io.StringIO()):
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main.main(), 0)
+        self.assertEqual(stdout.getvalue(), '')
         gui.click.assert_not_called()
         self.audio_class.assert_called_once_with(initial_delay=0)
         self.audio.close.assert_called_once()
@@ -74,8 +75,9 @@ class CursorTests(unittest.TestCase):
         with patch.dict('sys.modules', pyautogui=gui), \
                 patch.object(main.time, 'sleep', side_effect=KeyboardInterrupt), \
                 patch.object(main, 'move_cursor') as move, \
-                contextlib.redirect_stdout(io.StringIO()):
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main.main(), 0)
+        self.assertEqual(stdout.getvalue(), '')
         self.audio.start.assert_not_called()
         self.trail.start.assert_not_called()
         self.trail.close.assert_called_once()

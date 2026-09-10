@@ -24,7 +24,7 @@ def configuration():
         "LimitLoadToSessionType": "Aqua",
         # Завершившееся приложение остаётся остановленным до следующего входа.
         "KeepAlive": False,
-        "StandardOutPath": str(LOGS / "stdout.log"),
+        "StandardOutPath": os.devnull,
         "StandardErrorPath": str(LOGS / "stderr.log"),
     }
 
@@ -43,8 +43,13 @@ def stop(service):
         launchctl("bootout", service)
 
 
+class StderrParser(argparse.ArgumentParser):
+    def print_help(self, file=None):
+        super().print_help(file=sys.stderr)
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = StderrParser(description=__doc__)
     parser.add_argument("action", choices=["install", "uninstall", "stop", "status", "preview"])
     args = parser.parse_args()
     if sys.platform != "darwin":
@@ -54,7 +59,7 @@ def main():
     service = f"{domain}/{LABEL}"
     try:
         if args.action == "preview":
-            sys.stdout.buffer.write(plistlib.dumps(configuration()))
+            sys.stderr.write(plistlib.dumps(configuration()).decode("utf-8"))
         elif args.action == "install":
             python = PROJECT / ".venv/bin/python"
             if not python.is_file() or not (PROJECT / "main.py").is_file():
@@ -63,6 +68,7 @@ def main():
                 [str(python), "-c", "import pyautogui; from main import hide_dock_icon; hide_dock_icon()"],
                 cwd=PROJECT,
                 check=True,
+                stdout=subprocess.DEVNULL,
             )
             payload = plistlib.dumps(configuration())
             PLIST.parent.mkdir(parents=True, exist_ok=True)
@@ -72,28 +78,23 @@ def main():
             PLIST.chmod(0o644)
             launchctl("enable", service)
             launchctl("bootstrap", domain, str(PLIST))
-            print("Автозапуск установлен, программа запущена в текущем сеансе.")
-            print(f"Настройка: {PLIST}")
-            print(f"Логи: {LOGS}")
         elif args.action == "uninstall":
             stop(service)
             PLIST.unlink(missing_ok=True)
-            print("Программа остановлена, автозапуск удалён.")
         elif args.action == "stop":
             stop(service)
-            print("Остановлено до следующего входа в macOS.")
         else:
-            print(f"Автозапуск: {'установлен' if PLIST.is_file() else 'не установлен'}")
+            print(f"Автозапуск: {'установлен' if PLIST.is_file() else 'не установлен'}", file=sys.stderr)
             result = launchctl("print", service, check=False)
             if result.returncode:
-                print("Агент не загружен в текущем сеансе.")
+                print("Агент не загружен в текущем сеансе.", file=sys.stderr)
             else:
                 # Полный вывод launchctl может содержать переменные окружения.
                 seen = set()
                 for line in result.stdout.splitlines():
                     key, separator, value = line.strip().partition(" = ")
                     if separator and key in {"state", "pid", "last exit code"} and key not in seen:
-                        print(f"{key} = {value}")
+                        print(f"{key} = {value}", file=sys.stderr)
                         seen.add(key)
         return 0
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
