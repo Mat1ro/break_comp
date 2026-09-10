@@ -1,4 +1,4 @@
-"""Телепортация курсора и звук после двухминутной задержки при запуске."""
+"""Телепортация курсора, радужный след и звук после минутной задержки."""
 
 import random
 import signal
@@ -6,9 +6,10 @@ import sys
 import time
 
 from audio_player import RepeatingAudio
+from cursor_trail import CursorTrail
 
 INTERVAL_SECONDS = 0.1
-STARTUP_DELAY_SECONDS = 120
+STARTUP_DELAY_SECONDS = 60
 
 
 def hide_dock_icon():
@@ -50,11 +51,13 @@ def main() -> int:
 
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
-    print(f"Курсор и звук начнут работать через {STARTUP_DELAY_SECONDS} секунд. Остановка: Ctrl+C.", flush=True)
+    print(f"Курсор, след и звук начнут работать через {STARTUP_DELAY_SECONDS} секунд. Остановка: Ctrl+C.", flush=True)
 
     audio = RepeatingAudio(initial_delay=0)
+    trail = CursorTrail()
     try:
         time.sleep(STARTUP_DELAY_SECONDS)
+        trail.start()
         audio.start()
         print(f"Телепортация курсора каждые {INTERVAL_SECONDS} секунд, без кликов.", flush=True)
         next_move = time.monotonic()
@@ -87,7 +90,10 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\nОстановлено.")
     finally:
-        audio.close()
+        try:
+            trail.close()
+        finally:
+            audio.close()
     return 0
 
 

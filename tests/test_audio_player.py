@@ -7,7 +7,7 @@ import audio_player
 
 class AudioTests(unittest.TestCase):
     def test_immediate_play_after_shared_startup_delay(self):
-        clock = [120.0]
+        clock = [60.0]
         moments = []
         audio = audio_player.RepeatingAudio(initial_delay=0)
 
@@ -21,7 +21,7 @@ class AudioTests(unittest.TestCase):
         with patch.object(audio_player.time, "monotonic", lambda: clock[0]), \
                 patch.object(audio, "play_once", side_effect=lambda: moments.append(clock[0])):
             audio._run()
-        self.assertEqual(moments, [120.0, 130.0, 140.0])
+        self.assertEqual(moments, [60.0, 70.0, 80.0])
 
     def test_first_play_at_ten_seconds_and_independent_period(self):
         clock = [0.0]

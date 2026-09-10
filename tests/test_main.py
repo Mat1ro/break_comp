@@ -16,19 +16,25 @@ class CursorTests(unittest.TestCase):
         self.audio_class = audio.start()
         self.audio = self.audio_class.return_value
         self.addCleanup(audio.stop)
+        trail = patch.object(main, 'CursorTrail')
+        self.trail = trail.start().return_value
+        self.addCleanup(trail.stop)
 
     def simulate(self, sizes):
         clock = [0.0]
         moments = []
         audio_start = []
+        trail_start = []
         gui = types.SimpleNamespace(size=Mock(side_effect=sizes), click=Mock())
         self.audio.start.side_effect = lambda: audio_start.append(clock[0])
+        self.trail.start.side_effect = lambda: trail_start.append(clock[0])
 
         def sleep(seconds):
             self.assertGreaterEqual(seconds, 0)
-            if clock[0] < 120:
+            if clock[0] < 60:
                 self.assertFalse(moments)
                 self.audio.start.assert_not_called()
+                self.trail.start.assert_not_called()
             clock[0] += seconds
 
         def move(gui, x, y):
@@ -47,18 +53,20 @@ class CursorTests(unittest.TestCase):
         gui.click.assert_not_called()
         self.audio_class.assert_called_once_with(initial_delay=0)
         self.audio.close.assert_called_once()
+        self.assertEqual(trail_start, [60.0])
+        self.trail.close.assert_called_once()
         return moments, audio_start
 
-    def test_cursor_and_audio_wait_two_minutes_without_clicking(self):
+    def test_cursor_trail_and_audio_wait_one_minute_without_clicking(self):
         moments, audio_start = self.simulate([(1728, 1117)] * 3)
-        self.assertEqual(audio_start, [120.0])
-        for actual, expected in zip(moments, [120.0, 120.1, 120.2]):
+        self.assertEqual(audio_start, [60.0])
+        for actual, expected in zip(moments, [60.0, 60.1, 60.2]):
             self.assertAlmostEqual(actual, expected)
 
     def test_unavailable_screen_recovers_without_exiting(self):
         moments, audio_start = self.simulate([(0, 0), (0, 0)] + [(1728, 1117)] * 3)
-        self.assertEqual(audio_start, [120.0])
-        for actual, expected in zip(moments, [120.2, 120.3, 120.4]):
+        self.assertEqual(audio_start, [60.0])
+        for actual, expected in zip(moments, [60.2, 60.3, 60.4]):
             self.assertAlmostEqual(actual, expected)
 
     def test_cancel_during_startup_delay_prevents_all_activity(self):
@@ -69,6 +77,8 @@ class CursorTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(main.main(), 0)
         self.audio.start.assert_not_called()
+        self.trail.start.assert_not_called()
+        self.trail.close.assert_called_once()
         self.audio.close.assert_called_once()
         gui.size.assert_not_called()
         gui.click.assert_not_called()
