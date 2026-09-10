@@ -13,6 +13,9 @@ class CursorTests(unittest.TestCase):
         background = patch.object(main, "hide_dock_icon", return_value=True)
         background.start()
         self.addCleanup(background.stop)
+        audio = patch.object(main, "RepeatingAudio")
+        self.audio = audio.start().return_value
+        self.addCleanup(audio.stop)
 
     def test_unavailable_screen_recovers_without_exiting(self):
         clock = [0.0]
@@ -39,7 +42,9 @@ class CursorTests(unittest.TestCase):
                 patch.object(main, "move_cursor", move), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main.main(), 0)
-        self.assertEqual(moments, [540.0, 720.0])
+        self.assertEqual(moments, [3 * main.INTERVAL_SECONDS, 4 * main.INTERVAL_SECONDS])
+        self.audio.start.assert_called_once()
+        self.audio.close.assert_called_once()
         self.assertEqual(gui.click.call_count, 1)
         self.assertIn("подтверждено", output.getvalue())
 

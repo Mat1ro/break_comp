@@ -1,9 +1,11 @@
-"""Каждые 180 секунд перемещает курсор в случайную точку и кликает левой кнопкой."""
+"""Телепортация курсора с кликом и независимое воспроизведение звука на macOS."""
 
 import random
+import signal
 import sys
 import time
 
+from audio_player import RepeatingAudio
 
 INTERVAL_SECONDS = 0.5
 
@@ -49,7 +51,9 @@ def main() -> int:
     pyautogui.PAUSE = 0
     print(f"Каждые {INTERVAL_SECONDS} секунд: телепортация курсора и один левый клик. Остановка: Ctrl+C.")
 
+    audio = RepeatingAudio()
     try:
+        audio.start()
         next_move = time.monotonic() + INTERVAL_SECONDS
         last_status = None
         while True:
@@ -82,8 +86,15 @@ def main() -> int:
                 next_move = time.monotonic() + INTERVAL_SECONDS
     except KeyboardInterrupt:
         print("\nОстановлено.")
+    finally:
+        audio.close()
     return 0
 
 
 if __name__ == "__main__":
+    # launchctl bootout и обычный kill должны остановить также дочерний afplay.
+    def terminate(signum, frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, terminate)
     raise SystemExit(main())

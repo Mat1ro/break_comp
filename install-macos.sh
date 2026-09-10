@@ -44,7 +44,7 @@ curl --fail --location --silent --show-error --retry 2 \
     --output "$temp_dir/project.zip"
 ditto -x -k "$temp_dir/project.zip" "$temp_dir/unpacked"
 source_dir="$temp_dir/unpacked/break_comp-main"
-for name in main.py autostart.py requirements.txt README.md; do
+for name in main.py audio_player.py assets/farts-8.mp3 autostart.py requirements.txt README.md; do
     if [[ ! -f "$source_dir/$name" ]]; then
         echo "Архив не содержит $name; установка отменена." >&2
         exit 1
@@ -54,9 +54,9 @@ done
 # Отдельная папка версии сохраняет предыдущую установку при сбое скачивания/зависимостей.
 archive_hash="$(shasum -a 256 "$temp_dir/project.zip" | awk '{print $1}')"
 version_dir="$install_root/versions/$archive_hash"
-mkdir -p "$version_dir"
+mkdir -p "$version_dir/assets"
 touch "$install_root/.installed-by-break-comp"
-for name in main.py autostart.py requirements.txt README.md; do
+for name in main.py audio_player.py assets/farts-8.mp3 autostart.py requirements.txt README.md; do
     cp "$source_dir/$name" "$version_dir/$name"
 done
 echo "Устанавливаю зависимости…"
