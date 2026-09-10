@@ -13,6 +13,9 @@ class HotkeyTests(unittest.TestCase):
         image = patch.object(main, 'open_image')
         image.start()
         self.addCleanup(image.stop)
+        wallpaper = patch.object(main, 'TemporaryWallpaper')
+        self.wallpaper = wallpaper.start().return_value
+        self.addCleanup(wallpaper.stop)
         self.carbon = Mock()
         self.carbon.GetApplicationEventTarget.return_value = 10
         self.carbon.UnregisterEventHotKey.return_value = 0

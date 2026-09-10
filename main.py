@@ -1,4 +1,4 @@
-"""Телепортация курсора, звук и переключение яркости после минутной задержки."""
+"""Курсор, звук, яркость, картинка и временные обои после минутной задержки."""
 
 import random
 from pathlib import Path
@@ -10,6 +10,7 @@ import time
 from audio_player import RepeatingAudio
 from brightness_controller import BrightnessCycle
 from stop_hotkey import HotkeyError, StopHotkey
+from wallpaper_controller import TemporaryWallpaper
 
 INTERVAL_SECONDS = 0.1
 STARTUP_DELAY_SECONDS = 60
@@ -75,6 +76,7 @@ def main() -> int:
     audio = RepeatingAudio(initial_delay=0)
     brightness = BrightnessCycle()
     hotkey = StopHotkey()
+    wallpaper = TemporaryWallpaper()
     try:
         try:
             hotkey.start()
@@ -83,6 +85,7 @@ def main() -> int:
             print(f"{error} Продолжаю без горячей клавиши; остановка: autostart.py stop или Ctrl+C.",
                   file=sys.stderr)
         hotkey.wait(STARTUP_DELAY_SECONDS)
+        wallpaper.start()
         open_image()
         audio.start()
         brightness.start()
@@ -118,12 +121,15 @@ def main() -> int:
         return 1
     finally:
         try:
-            brightness.close()
+            wallpaper.close()
         finally:
             try:
-                audio.close()
+                brightness.close()
             finally:
-                hotkey.close()
+                try:
+                    audio.close()
+                finally:
+                    hotkey.close()
     return 0
 
 

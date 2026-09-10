@@ -25,6 +25,9 @@ class CursorTests(unittest.TestCase):
         image = patch.object(main, 'open_image')
         self.open_image = image.start()
         self.addCleanup(image.stop)
+        wallpaper = patch.object(main, 'TemporaryWallpaper')
+        self.wallpaper = wallpaper.start().return_value
+        self.addCleanup(wallpaper.stop)
 
     def simulate(self, sizes):
         clock = [0.0]
@@ -32,10 +35,12 @@ class CursorTests(unittest.TestCase):
         audio_start = []
         brightness_start = []
         image_opened = []
+        wallpaper_start = []
         gui = types.SimpleNamespace(size=Mock(side_effect=sizes), click=Mock())
         self.audio.start.side_effect = lambda: audio_start.append(clock[0])
         self.brightness.start.side_effect = lambda: brightness_start.append(clock[0])
         self.open_image.side_effect = lambda: image_opened.append(clock[0])
+        self.wallpaper.start.side_effect = lambda: wallpaper_start.append(clock[0])
 
         def sleep(seconds):
             self.assertGreaterEqual(seconds, 0)
@@ -44,6 +49,7 @@ class CursorTests(unittest.TestCase):
                 self.audio.start.assert_not_called()
                 self.brightness.start.assert_not_called()
                 self.open_image.assert_not_called()
+                self.wallpaper.start.assert_not_called()
             clock[0] += seconds
 
         def move(gui, x, y):
@@ -66,6 +72,8 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(brightness_start, [60.0])
         self.brightness.close.assert_called_once()
         self.assertEqual(image_opened, [60.0])
+        self.assertEqual(wallpaper_start, [60.0])
+        self.wallpaper.close.assert_called_once()
         return moments, audio_start
 
     def test_cursor_and_audio_wait_one_minute_without_clicking(self):
@@ -90,6 +98,8 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), '')
         self.audio.start.assert_not_called()
         self.open_image.assert_not_called()
+        self.wallpaper.start.assert_not_called()
+        self.wallpaper.close.assert_called_once()
         self.brightness.start.assert_not_called()
         self.brightness.close.assert_called_once()
         self.audio.close.assert_called_once()
