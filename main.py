@@ -1,4 +1,4 @@
-"""Телепортация курсора, радужный след и звук после минутной задержки."""
+"""Телепортация курсора и звук после минутной задержки."""
 
 import random
 import signal
@@ -6,7 +6,6 @@ import sys
 import time
 
 from audio_player import RepeatingAudio
-from cursor_trail import CursorTrail
 
 INTERVAL_SECONDS = 0.1
 STARTUP_DELAY_SECONDS = 60
@@ -53,10 +52,8 @@ def main() -> int:
     pyautogui.PAUSE = 0
 
     audio = RepeatingAudio(initial_delay=0)
-    trail = CursorTrail()
     try:
         time.sleep(STARTUP_DELAY_SECONDS)
-        trail.start()
         audio.start()
         next_move = time.monotonic()
         last_status = None
@@ -85,10 +82,7 @@ def main() -> int:
     except KeyboardInterrupt:
         pass
     finally:
-        try:
-            trail.close()
-        finally:
-            audio.close()
+        audio.close()
     return 0
 
 
