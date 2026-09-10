@@ -13,7 +13,6 @@ def move_cursor(pyautogui, x, y):
     if sys.platform == "darwin":
         import Quartz
 
-        pyautogui.failSafeCheck()
         result = Quartz.CGWarpMouseCursorPosition((x, y))
         if result != Quartz.kCGErrorSuccess:
             return False
@@ -32,10 +31,9 @@ def main() -> int:
         )
         return 1
 
-    pyautogui.FAILSAFE = True
+    pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0
     print(f"Курсор будет перемещаться каждые {INTERVAL_SECONDS} секунд. Остановка: Ctrl+C.")
-    print("Аварийная остановка: переместите курсор в левый верхний угол и оставьте там.")
 
     try:
         next_move = time.monotonic() + INTERVAL_SECONDS
@@ -50,7 +48,7 @@ def main() -> int:
                 last_status = "screen_unavailable"
                 next_move = time.monotonic() + INTERVAL_SECONDS
                 continue
-            # Не попадаем в углы, чтобы самим не включить аварийную остановку.
+            # Выбираем точку внутри экрана с отступом в один пиксель.
             x = random.randrange(1, width - 1)
             y = random.randrange(1, height - 1)
             status = "confirmed" if move_cursor(pyautogui, x, y) else "unconfirmed"
@@ -67,8 +65,6 @@ def main() -> int:
                 next_move = time.monotonic() + INTERVAL_SECONDS
     except KeyboardInterrupt:
         print("\nОстановлено.")
-    except pyautogui.FailSafeException:
-        print("\nОстановлено: курсор находится в углу экрана.")
     return 0
 
 

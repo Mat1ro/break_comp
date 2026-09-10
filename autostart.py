@@ -22,7 +22,7 @@ def configuration():
         "WorkingDirectory": str(PROJECT),
         "RunAtLoad": True,
         "LimitLoadToSessionType": "Aqua",
-        # После аварийной остановки приложение остаётся остановленным.
+        # Завершившееся приложение остаётся остановленным до следующего входа.
         "KeepAlive": False,
         "StandardOutPath": str(LOGS / "stdout.log"),
         "StandardErrorPath": str(LOGS / "stderr.log"),
