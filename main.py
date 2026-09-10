@@ -1,4 +1,4 @@
-"""Телепортация курсора и звук после минутной задержки."""
+"""Телепортация курсора, звук и переключение яркости после минутной задержки."""
 
 import random
 import signal
@@ -6,6 +6,7 @@ import sys
 import time
 
 from audio_player import RepeatingAudio
+from brightness_controller import BrightnessCycle
 
 INTERVAL_SECONDS = 0.1
 STARTUP_DELAY_SECONDS = 60
@@ -84,13 +85,16 @@ def main() -> int:
     pyautogui.PAUSE = 0
 
     audio = RepeatingAudio(initial_delay=0)
+    brightness = BrightnessCycle()
     try:
         wait_or_stop(STARTUP_DELAY_SECONDS)
         audio.start()
+        brightness.start()
         next_move = time.monotonic()
         last_status = None
         while True:
             wait_or_stop(max(0, next_move - time.monotonic()))
+            brightness.update()
             width, height = pyautogui.size()
             if width < 3 or height < 3:
                 # Дисплей может быть временно недоступен во время сна/пробуждения.
@@ -114,7 +118,10 @@ def main() -> int:
     except KeyboardInterrupt:
         pass
     finally:
-        audio.close()
+        try:
+            brightness.close()
+        finally:
+            audio.close()
     return 0
 
 

@@ -38,6 +38,7 @@ class HotkeyTests(unittest.TestCase):
                     patch.dict('sys.modules', pyautogui=gui), \
                     patch.object(main, 'hide_dock_icon', return_value=True), \
                     patch.object(main, 'RepeatingAudio') as audio_class, \
+                    patch.object(main, 'BrightnessCycle') as brightness_class, \
                     patch.object(main, 'move_cursor', return_value=True) as move, \
                     patch.object(main, 'stop_requested', side_effect=lambda: clock[0] >= pressed_at), \
                     patch.object(main.time, 'monotonic', side_effect=lambda: clock[0]), \
@@ -46,11 +47,14 @@ class HotkeyTests(unittest.TestCase):
                 self.assertEqual(main.main(), 0)
                 self.assertEqual(stdout.getvalue(), '')
                 audio_class.return_value.close.assert_called_once()
+                brightness_class.return_value.close.assert_called_once()
                 if pressed_at < 60:
                     audio_class.return_value.start.assert_not_called()
+                    brightness_class.return_value.start.assert_not_called()
                     move.assert_not_called()
                 else:
                     audio_class.return_value.start.assert_called_once()
+                    brightness_class.return_value.start.assert_called_once()
                     self.assertGreater(move.call_count, 0)
                 gui.click.assert_not_called()
                 self.assertLessEqual(clock[0] - pressed_at, main.HOTKEY_POLL_SECONDS + 1e-8)
