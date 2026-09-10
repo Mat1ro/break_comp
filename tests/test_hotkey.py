@@ -10,6 +10,9 @@ import stop_hotkey as keys
 
 class HotkeyTests(unittest.TestCase):
     def setUp(self):
+        image = patch.object(main, 'open_image')
+        image.start()
+        self.addCleanup(image.stop)
         self.carbon = Mock()
         self.carbon.GetApplicationEventTarget.return_value = 10
         self.carbon.UnregisterEventHotKey.return_value = 0

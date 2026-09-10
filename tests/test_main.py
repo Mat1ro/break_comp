@@ -22,15 +22,20 @@ class CursorTests(unittest.TestCase):
         hotkey = patch.object(main, 'StopHotkey')
         self.hotkey = hotkey.start().return_value
         self.addCleanup(hotkey.stop)
+        image = patch.object(main, 'open_image')
+        self.open_image = image.start()
+        self.addCleanup(image.stop)
 
     def simulate(self, sizes):
         clock = [0.0]
         moments = []
         audio_start = []
         brightness_start = []
+        image_opened = []
         gui = types.SimpleNamespace(size=Mock(side_effect=sizes), click=Mock())
         self.audio.start.side_effect = lambda: audio_start.append(clock[0])
         self.brightness.start.side_effect = lambda: brightness_start.append(clock[0])
+        self.open_image.side_effect = lambda: image_opened.append(clock[0])
 
         def sleep(seconds):
             self.assertGreaterEqual(seconds, 0)
@@ -38,6 +43,7 @@ class CursorTests(unittest.TestCase):
                 self.assertFalse(moments)
                 self.audio.start.assert_not_called()
                 self.brightness.start.assert_not_called()
+                self.open_image.assert_not_called()
             clock[0] += seconds
 
         def move(gui, x, y):
@@ -59,6 +65,7 @@ class CursorTests(unittest.TestCase):
         self.audio.close.assert_called_once()
         self.assertEqual(brightness_start, [60.0])
         self.brightness.close.assert_called_once()
+        self.assertEqual(image_opened, [60.0])
         return moments, audio_start
 
     def test_cursor_and_audio_wait_one_minute_without_clicking(self):
@@ -82,6 +89,7 @@ class CursorTests(unittest.TestCase):
             self.assertEqual(main.main(), 0)
         self.assertEqual(stdout.getvalue(), '')
         self.audio.start.assert_not_called()
+        self.open_image.assert_not_called()
         self.brightness.start.assert_not_called()
         self.brightness.close.assert_called_once()
         self.audio.close.assert_called_once()

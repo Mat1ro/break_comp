@@ -1,7 +1,9 @@
 """Телепортация курсора, звук и переключение яркости после минутной задержки."""
 
 import random
+from pathlib import Path
 import signal
+import subprocess
 import sys
 import time
 
@@ -11,6 +13,23 @@ from stop_hotkey import HotkeyError, StopHotkey
 
 INTERVAL_SECONDS = 0.1
 STARTUP_DELAY_SECONDS = 60
+IMAGE_FILE = Path(__file__).resolve().parent / "assets" / "poop.webp"
+
+
+def open_image():
+    """Один раз открываем готовую картинку стандартным приложением macOS."""
+    if sys.platform != "darwin":
+        return
+    if not IMAGE_FILE.is_file():
+        print("Не найден файл assets/poop.webp.", file=sys.stderr)
+        return
+    try:
+        subprocess.run(
+            ["/usr/bin/open", str(IMAGE_FILE)],
+            check=True, timeout=5, stdout=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"Не удалось открыть картинку ({type(error).__name__}).", file=sys.stderr)
 
 
 def hide_dock_icon():
@@ -64,6 +83,7 @@ def main() -> int:
             print(f"{error} Продолжаю без горячей клавиши; остановка: autostart.py stop или Ctrl+C.",
                   file=sys.stderr)
         hotkey.wait(STARTUP_DELAY_SECONDS)
+        open_image()
         audio.start()
         brightness.start()
         next_move = time.monotonic()
