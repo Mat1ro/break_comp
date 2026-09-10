@@ -16,6 +16,9 @@ class CursorTests(unittest.TestCase):
         audio = patch.object(main, "RepeatingAudio")
         self.audio = audio.start().return_value
         self.addCleanup(audio.stop)
+        permission = patch.object(main, "click_permission", return_value=True)
+        permission.start()
+        self.addCleanup(permission.stop)
         click = patch.object(main, "double_click", side_effect=lambda gui, x, y:
                              gui.click(x=x, y=y, clicks=2, interval=0, button="left"))
         click.start()
@@ -63,6 +66,20 @@ class CursorTests(unittest.TestCase):
             quartz.CGWarpMouseCursorPosition.return_value = 1002
             gui.position.return_value = (100, 200)
             self.assertFalse(main.move_cursor(gui, 100, 200))
+
+    def test_denied_permission_pauses_cursor_until_granted(self):
+        gui = types.SimpleNamespace(size=Mock(return_value=(1728, 1117)), click=Mock())
+        with patch.dict("sys.modules", pyautogui=gui), \
+                patch.object(main, "click_permission", side_effect=[False, False, True]) as permission, \
+                patch.object(main, "move_cursor", return_value=True) as move, \
+                patch.object(main.time, "sleep", side_effect=[None, None, None, KeyboardInterrupt]), \
+                contextlib.redirect_stderr(io.StringIO()) as error, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(main.main(), 0)
+        self.assertEqual(permission.call_args_list[1].kwargs, {"request": True})
+        move.assert_called_once()
+        gui.click.assert_called_once()
+        self.assertIn("Курсор приостановлен", error.getvalue())
 
     def test_top_right_corner_does_not_stop_program(self):
         for platform in ("darwin", "win32"):

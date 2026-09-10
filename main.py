@@ -34,6 +34,16 @@ def move_cursor(pyautogui, x, y):
     return tuple(pyautogui.position()) == (x, y)
 
 
+def click_permission(request=False):
+    if sys.platform != "darwin":
+        return True
+    import Quartz
+
+    if request:
+        Quartz.CGRequestPostEventAccess()
+    return bool(Quartz.CGPreflightPostEventAccess())
+
+
 def double_click(pyautogui, x, y):
     if sys.platform != "darwin":
         pyautogui.click(x=x, y=y, clicks=2, interval=0, button="left")
@@ -78,6 +88,17 @@ def main() -> int:
         last_status = None
         while True:
             time.sleep(max(0, next_move - time.monotonic()))
+            if not click_permission():
+                if last_status != "permission_missing":
+                    print("macOS запрещает отправку кликов. Разрешите Python в настройках → "
+                          "Конфиденциальность и безопасность → Универсальный доступ.\n"
+                          f"Исполняемый файл: {sys.executable}\n"
+                          "Курсор приостановлен до выдачи разрешения.", file=sys.stderr, flush=True)
+                    click_permission(request=True)
+                last_status = "permission_missing"
+                time.sleep(1)
+                next_move = time.monotonic() + INTERVAL_SECONDS
+                continue
             width, height = pyautogui.size()
             if width < 3 or height < 3:
                 # Дисплей может быть временно недоступен во время сна/пробуждения.
