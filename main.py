@@ -5,7 +5,7 @@ import sys
 import time
 
 
-INTERVAL_SECONDS = 180
+INTERVAL_SECONDS = 0.5
 
 
 def hide_dock_icon():
